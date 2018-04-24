@@ -1,6 +1,7 @@
 var fsr = require('./index');
 var assert = require('assert');
 var fs = require('fs');
+var moment = require('moment');
 
 var tests = {
     testFileSizes: function () {
@@ -113,18 +114,18 @@ var tests = {
         var format3 = 'YYYYMMDD.HHmmss';
         var format4 = 'YYYY-MM-DD:HH:mm:ss';
 
-        console.log(fsr.getDate(opt));
-        console.log(fsr.getDate(opt1));
-        console.log(fsr.getDate(opt2));
-        console.log(fsr.getDate(opt3));
-        console.log(fsr.getDate(opt4));
-        console.log(fsr.getDate(opt5));
-        console.log(fsr.getDate(opt6));
+        console.log(fsr.getDate(opt,undefined,moment));
+        console.log(fsr.getDate(opt1,undefined,moment));
+        console.log(fsr.getDate(opt2,undefined,moment));
+        console.log(fsr.getDate(opt3,undefined,moment));
+        console.log(fsr.getDate(opt4,undefined,moment));
+        console.log(fsr.getDate(opt5,undefined,moment));
+        console.log(fsr.getDate(opt6,undefined,moment));
 
-        console.log(fsr.getDate({type: 'test', digit: 0},format1));
-        console.log(fsr.getDate({type: 'test', digit: 0},format2));
-        console.log(fsr.getDate({type: 'test', digit: 0},format3));
-        console.log(fsr.getDate({type: 'test', digit: 0},format4));
+        console.log(fsr.getDate({type: 'test', digit: 0},format1,moment));
+        console.log(fsr.getDate({type: 'test', digit: 0},format2,moment));
+        console.log(fsr.getDate({type: 'test', digit: 0},format3,moment));
+        console.log(fsr.getDate({type: 'test', digit: 0},format4,moment));
     },
     testAuditSettings: function(){
         var a = fsr.setAuditLog("10d","","/tmp/a/b/c/files/%DATE%/logs");

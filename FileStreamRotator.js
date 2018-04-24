@@ -44,6 +44,8 @@ var EventEmitter = require('events');
  *
  *   - `audit_file`     Location to store the log audit file. If not set, it will be stored in the root of the application.
  *
+ *   - `utc`            Boolean, default is false.  Determines whether dates used are UTC.
+ *
  * To use with Express / Connect, use as below.
  *
  * var rotatingLogStream = require('FileStreamRotator').getStream({filename:"/tmp/test.log", frequency:"daily", verbose: false})
@@ -152,25 +154,25 @@ FileStreamRotator.parseFileSize = function (size) {
  * @param date_format
  * @returns {string}
  */
-FileStreamRotator.getDate = function (format, date_format) {
+FileStreamRotator.getDate = function (format, date_format, createMoment) {
     date_format = date_format || DATE_FORMAT;
     if (format && staticFrequency.indexOf(format.type) !== -1) {
         switch (format.type) {
             case 'm':
-                var minute = Math.floor(moment().minutes() / format.digit) * format.digit;
-                return moment().minutes(minute).format(date_format);
+                var minute = Math.floor(createMoment().minutes() / format.digit) * format.digit;
+                return createMoment().minutes(minute).format(date_format);
                 break;
             case 'h':
-                var hour = Math.floor(moment().hour() / format.digit) * format.digit;
-                return moment().hour(hour).format(date_format);
+                var hour = Math.floor(createMoment().hour() / format.digit) * format.digit;
+                return createMoment().hour(hour).format(date_format);
                 break;
             case 'daily':
             case 'custom':
             case 'test':
-                return moment().format(date_format);
+                return createMoment().format(date_format);
         }
     }
-    return moment().format(date_format);
+    return createMoment().format(date_format);
 }
 
 /**
@@ -272,7 +274,7 @@ function removeFile(file){
  * @param {String} audit.auditLog
  * @param {Array} audit.files
  */
-FileStreamRotator.addLogToAudit = function(logfile, audit){
+FileStreamRotator.addLogToAudit = function(logfile, audit, createMoment){
     if(audit && audit.files){
         var time = Date.now();
         audit.files.push({
@@ -282,7 +284,7 @@ FileStreamRotator.addLogToAudit = function(logfile, audit){
         });
 
         if(audit.keep.days){
-            var oldestDate = moment().subtract(audit.keep.amount,"days").valueOf();
+            var oldestDate = createMoment().subtract(audit.keep.amount,"days").valueOf();
             var recentFiles = audit.files.filter(function(file){
                 if(file.date > oldestDate){
                     return true;
@@ -318,12 +320,14 @@ FileStreamRotator.addLogToAudit = function(logfile, audit){
  * @param options.size
  * @param options.max_logs
  * @param options.audit_file
+ * @param options.utc
  * @returns {Object} stream
  */
 FileStreamRotator.getStream = function (options) {
     var frequencyMetaData = null;
     var curDate = null;
     var self = this;
+    var createMoment = options.utc ? moment.utc : moment
 
     if (!options.filename) {
         console.error(new Date(),"[FileStreamRotator] No filename supplied. Defaulting to STDOUT");
@@ -348,7 +352,7 @@ FileStreamRotator.getStream = function (options) {
         if(!options.date_format){
             dateFormat = "YYYY-MM-DD";
         }
-        if(moment().format(dateFormat) != moment().add(2,"hours").format(dateFormat) || moment().format(dateFormat) == moment().add(1,"day").format(dateFormat)){
+        if(createMoment().format(dateFormat) != createMoment().add(2,"hours").format(dateFormat) || createMoment().format(dateFormat) == createMoment().add(1,"day").format(dateFormat)){
             if(options.verbose){
                 console.log(new Date(),"[FileStreamRotator] Changing type to custom as date format changes more often than once a day or not every day");
             }
@@ -357,14 +361,14 @@ FileStreamRotator.getStream = function (options) {
     }
 
     if (frequencyMetaData) {
-        curDate = (options.frequency ? self.getDate(frequencyMetaData,dateFormat) : "");
+        curDate = (options.frequency ? self.getDate(frequencyMetaData,dateFormat,createMoment) : "");
     }
 
     var filename = options.filename;
     var oldFile = null;
     var logfile = filename + (curDate ? "." + curDate : "");
     if(filename.match(/%DATE%/)){
-        logfile = filename.replace(/%DATE%/g,(curDate?curDate:self.getDate(null,dateFormat)));
+        logfile = filename.replace(/%DATE%/g,(curDate?curDate:self.getDate(null,dateFormat,createMoment)));
     }
     var verbose = (options.verbose !== undefined ? options.verbose : true);
     if (verbose) {
@@ -405,12 +409,12 @@ FileStreamRotator.getStream = function (options) {
         BubbleEvents(rotateStream,stream);
 
         stream.on("new",function(newLog){
-            self.auditLog = self.addLogToAudit(newLog,self.auditLog);
+            self.auditLog = self.addLogToAudit(newLog,self.auditLog,createMoment);
 
         });
 
         stream.write = (function (str, encoding) {
-            var newDate = this.getDate(frequencyMetaData,dateFormat);
+            var newDate = this.getDate(frequencyMetaData,dateFormat,createMoment);
             if (newDate != curDate || (fileSize && curSize > fileSize)) {
                 var newLogfile = filename + (curDate ? "." + newDate : "");
                 if(filename.match(/%DATE%/) && curDate){
